@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Torrent demagnetizer</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="">
+        <meta name="author" content="">
+
+        <link href="/static/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+
+        <script type="text/javascript" src="/static/jquery-1.8.1.min.js"></script>
+
+        <!--[if lt IE 9]>
+        <script type="text/javascript" src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+
+        <script type="text/javascript">
+            var working = false;
+
+            function bytesToSize(bytes, precision)
+            {  
+                var kilobyte = 1024;
+                var megabyte = kilobyte * 1024;
+                var gigabyte = megabyte * 1024;
+                var terabyte = gigabyte * 1024;
+               
+                if ((bytes >= 0) && (bytes < kilobyte)) {
+                    return bytes + ' B';
+             
+                } else if ((bytes >= kilobyte) && (bytes < megabyte)) {
+                    return (bytes / kilobyte).toFixed(precision) + ' KB';
+             
+                } else if ((bytes >= megabyte) && (bytes < gigabyte)) {
+                    return (bytes / megabyte).toFixed(precision) + ' MB';
+             
+                } else if ((bytes >= gigabyte) && (bytes < terabyte)) {
+                    return (bytes / gigabyte).toFixed(precision) + ' GB';
+             
+                } else if (bytes >= terabyte) {
+                    return (bytes / terabyte).toFixed(precision) + ' TB';
+             
+                } else {
+                    return bytes + ' B';
+                }
+            }
+
+            $(function(){
+                $("#magnetSubmit").click(function(){
+
+                    if (working) { 
+                        alert("I'm working, fuck off");
+                        return false;
+                    }
+
+                    var magnetURI = $("#magnetURI").val();
+
+                    working = true;
+                    $(".torrent-info-table").slideUp("slow");
+
+                    $.post("/demagnetize", {"uri": magnetURI},
+                        function(data) {
+                            working = false;
+
+                            if (data.status != "success") {
+                                alert (data.error_description);
+                                return false;
+                            }
+
+                            if (data.creator == '') data.creator = 'Unknown';
+                            if (data.comment == '') data.comment = 'No comments';
+
+                            $('#tname').html(data.name);
+                            $('#tsize').html(bytesToSize(data.total_size, 2));
+                            $('#tcreator').html(data.creator);
+                            $('#tdate').html(data.creation_date);
+                            $('#tcomment').html(data.comment);
+
+                            var trackers_list = $("<ol></ol>");
+
+                            for (tracker in data.trackers) {
+                                trackers_list.append("<li>" + data.trackers[tracker] + "</li>")
+                            }
+
+                            $('#trackers').html(trackers_list);
+
+                            var files_list = $("<ol></ol>");
+
+                            for (file in data.files) {
+                                files_list.append("<li>" + data.files[file].path + " (" + bytesToSize(data.files[file].size, 2) + ")" + "</li>")
+                            }
+
+                            $('#tfiles').html(files_list);
+
+                            $('#tdownload').attr("href", "/torrents/" + data.info_hash + ".torrent");
+
+                            $(".torrent-info-table").slideDown("slow");
+                        }, 
+                    "json");
+
+                });
+            })
+        </script>
+
+        <style type="text/css">
+            #magnetURI {
+                width: 870px;
+            }
+
+            .torrent-info-table {
+                display: none;
+                margin-top: 1.5em;
+            }
+
+            .torrent-info-table th {
+                width: 100px;
+            }
+        </style>
+
+    </head>
+
+    <body>
+         <div class="container">
+            <h1>Torrent demagnetizer</h1>
+            <p>Convert torrent magnet URI to .torrent file and get info about content</p>
+
+            <div id="alerts"></div>
+
+            <div class="input-append">
+                <input class="span2" id="magnetURI" size="16" type="text" placeholder="magnet:"><button id="magnetSubmit" class="btn btn-primary" type="button">Go!</button>
+            </div>
+
+            <span class="label label-important">WARNING: This service could be used only for a legal content</span>
+
+            <table class="table table-hover torrent-info-table well">
+                <caption><h4>Torrent magnet information</h4></caption>
+                <tr>
+                    <th>Name:</th><td id="tname">...</td>
+                </tr>
+                <tr>
+                    <th>Size:</th><td id="tsize">...</td>
+                </tr>
+                <tr>
+                    <th>Creator:</th><td id="tcreator">...</td>
+                </tr>
+                <tr>
+                    <th>Creation date:</th><td id="tdate">...</td>
+                </tr>
+                <tr>
+                    <th>Comment:</th><td id="tcomment">...</td>
+                </tr>
+                <tr>
+                    <th>Trackers:</th><td id="trackers">...</td>
+                </tr>
+                <tr>
+                    <th>Files:</th><td id="tfiles">...</td>
+                </tr>
+                <tr>
+                    <td colspan="2"> 
+                        <a id="tdownload" href="#" class="btn btn-large btn-block btn-primary" type="button">Download .torrent file</a>
+                    </td>
+                </tr>
+
+                
+            </table>
+
+         </div>
+
+    </body>
+</html>
